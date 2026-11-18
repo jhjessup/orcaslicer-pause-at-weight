@@ -7,6 +7,8 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- The plugin now always writes a summary comment as the second line of the G-code, even
+  when no pause is needed, so you can see it ran.
 - ruff lint and format checks, and a CI workflow running them plus the tests on Linux and
   Windows (Python 3.12 and 3.13).
 

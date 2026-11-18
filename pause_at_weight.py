@@ -119,30 +119,34 @@ def process_file(path, remaining_g, reserve_g, pause_command, density=0, diamete
 
     limit_mm = (remaining_g - reserve_g) / grams_per_mm
     hit = next((i for i, t in enumerate(totals) if t > limit_mm), None)
+    eol = "\r\n" if lines[0].endswith("\r\n") else "\n"
+
     if hit is None:
-        return (
+        message = (
             f"print needs {total_g:.1f} g, spool has {remaining_g:.1f} g "
             f"(reserve {reserve_g:g} g); no pause needed.{note}"
         )
+    else:
+        # Pause at the start of the layer where the limit is crossed.
+        insert_at = next((i for i in range(hit, -1, -1) if lines[i].startswith(_LAYER_MARKER)), hit)
+        used_g = (totals[insert_at - 1] if insert_at > 0 else 0.0) * grams_per_mm
+        commands = [c.strip() for c in pause_command.replace("\\n", "\n").split("\n") if c.strip()]
+        block = [f"; --- pause_at_weight: ~{used_g:.1f} g used of {remaining_g:.1f} g ---{eol}"]
+        block += [c + eol for c in commands]
+        block.append(f"; --- end pause_at_weight ---{eol}")
+        lines[insert_at:insert_at] = block
+        message = (
+            f"pause inserted after ~{used_g:.1f} g (print total {total_g:.1f} g); "
+            f"new spool needs at least {total_g - used_g:.1f} g.{note}"
+        )
 
-    # Pause at the start of the layer where the limit is crossed.
-    insert_at = next((i for i in range(hit, -1, -1) if lines[i].startswith(_LAYER_MARKER)), hit)
-    used_g = (totals[insert_at - 1] if insert_at > 0 else 0.0) * grams_per_mm
-
-    eol = "\r\n" if lines[0].endswith("\r\n") else "\n"
-    commands = [c.strip() for c in pause_command.replace("\\n", "\n").split("\n") if c.strip()]
-    block = [f"; --- pause_at_weight: ~{used_g:.1f} g used of {remaining_g:.1f} g ---{eol}"]
-    block += [c + eol for c in commands]
-    block.append(f"; --- end pause_at_weight ---{eol}")
-    lines[insert_at:insert_at] = block
+    # Always leave a summary near the top, so the file shows the plugin ran. It goes after
+    # the first line, which some printers expect to stay first.
+    lines.insert(1, f"; pause_at_weight: {message}{eol}")
 
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.writelines(lines)
-
-    return (
-        f"pause inserted after ~{used_g:.1f} g (print total {total_g:.1f} g); "
-        f"new spool needs at least {total_g - used_g:.1f} g.{note}"
-    )
+    return message
 
 
 # ----------------------------------------------------------------- OrcaSlicer plugin

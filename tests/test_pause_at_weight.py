@@ -97,7 +97,19 @@ class CoreTests(unittest.TestCase):
         self.write(original)
         msg = self.mod.process_file(self.path, 1000, 20, "M600")
         self.assertIn("no pause needed", msg)
-        self.assertEqual(self.read(), original)
+        lines = self.read().splitlines(keepends=True)
+        # Only change: a summary comment as the second line.
+        self.assertEqual(lines[1], f"; pause_at_weight: {msg}\n")
+        self.assertEqual("".join(lines[:1] + lines[2:]), original)
+        self.assertNotIn("M600", self.read())
+
+    def test_summary_comment_written_when_pausing(self):
+        self.write(make_gcode())
+        msg = self.mod.process_file(self.path, 25, 5, "M600")
+        lines = self.read().splitlines()
+        self.assertEqual(lines[0], "; start")
+        self.assertEqual(lines[1], f"; pause_at_weight: {msg}")
+        self.assertIn("pause inserted", lines[1])
 
     def test_multi_line_pause_command(self):
         self.write(make_gcode())
