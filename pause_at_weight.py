@@ -3,7 +3,7 @@
 #
 # [tool.orcaslicer.plugin]
 # name = "Pause at Weight"
-# description = "Inserts a pause (filament change) before the spool runs out, based on the grams left on it."
+# description = "Pauses for a filament change before the spool runs out, based on its weight."
 # author = "jhjessup"
 # version = "0.1.0"
 # type = "slicing-pipeline"
@@ -26,6 +26,7 @@ Settings (JSON, edited in OrcaSlicer's plugin Capabilities dialog):
 The same file can also run as a classic post-processing script (for OrcaSlicer before 2.5):
   python3 pause_at_weight.py [--remaining 1000] [--reserve 20] [--pause-cmd M600] file.gcode
 """
+
 import json
 import math
 import re
@@ -49,6 +50,7 @@ _LAYER_MARKER = ";LAYER_CHANGE"
 
 
 # ----------------------------------------------------------------- core logic (no orca needed)
+
 
 def _read_setting(lines, key):
     """First value of an OrcaSlicer '; key = value' setting (written at file end), or None."""
@@ -80,7 +82,7 @@ def _cumulative_extrusion(lines):
             elif re.fullmatch(r"T[1-9]\d*", cmd):
                 extra_tools = True
             else:
-                words = dict(_WORD_RE.findall(code[len(cmd):]))
+                words = dict(_WORD_RE.findall(code[len(cmd) :]))
                 if "E" in words:
                     e = float(words["E"])
                     if cmd == "G92":
@@ -118,8 +120,10 @@ def process_file(path, remaining_g, reserve_g, pause_command, density=0, diamete
     limit_mm = (remaining_g - reserve_g) / grams_per_mm
     hit = next((i for i, t in enumerate(totals) if t > limit_mm), None)
     if hit is None:
-        return (f"print needs {total_g:.1f} g, spool has {remaining_g:.1f} g "
-                f"(reserve {reserve_g:g} g); no pause needed.{note}")
+        return (
+            f"print needs {total_g:.1f} g, spool has {remaining_g:.1f} g "
+            f"(reserve {reserve_g:g} g); no pause needed.{note}"
+        )
 
     # Pause at the start of the layer where the limit is crossed.
     insert_at = next((i for i in range(hit, -1, -1) if lines[i].startswith(_LAYER_MARKER)), hit)
@@ -135,8 +139,10 @@ def process_file(path, remaining_g, reserve_g, pause_command, density=0, diamete
     with open(path, "w", encoding="utf-8", newline="") as f:
         f.writelines(lines)
 
-    return (f"pause inserted after ~{used_g:.1f} g (print total {total_g:.1f} g); "
-            f"new spool needs at least {total_g - used_g:.1f} g.{note}")
+    return (
+        f"pause inserted after ~{used_g:.1f} g (print total {total_g:.1f} g); "
+        f"new spool needs at least {total_g - used_g:.1f} g.{note}"
+    )
 
 
 # ----------------------------------------------------------------- OrcaSlicer plugin
@@ -164,12 +170,18 @@ if orca is not None:
                 return orca.ExecutionResult.success()
             try:
                 c = self._settings()
-                msg = process_file(ctx.gcode_path, float(c["remaining_g"]), float(c["reserve_g"]),
-                                   str(c["pause_command"]), float(c["density_g_cm3"]),
-                                   float(c["diameter_mm"]))
+                msg = process_file(
+                    ctx.gcode_path,
+                    float(c["remaining_g"]),
+                    float(c["reserve_g"]),
+                    str(c["pause_command"]),
+                    float(c["density_g_cm3"]),
+                    float(c["diameter_mm"]),
+                )
             except (ValueError, OSError) as e:
-                return orca.ExecutionResult.failure(orca.PluginResult.RecoverableError,
-                                                    "Pause at Weight: " + str(e))
+                return orca.ExecutionResult.failure(
+                    orca.PluginResult.RecoverableError, "Pause at Weight: " + str(e)
+                )
             return orca.ExecutionResult.success("Pause at Weight: " + msg)
 
     @orca.plugin
@@ -180,20 +192,28 @@ if orca is not None:
 
 # ----------------------------------------------------------------- command-line mode
 
+
 def _main():
     import argparse
+
     p = argparse.ArgumentParser(description="Insert a pause before the spool runs out.")
     p.add_argument("gcode", help="G-code file (OrcaSlicer supplies this)")
-    p.add_argument("--remaining", type=float, default=DEFAULTS["remaining_g"],
-                   help="grams left on spool (default 1000)")
+    p.add_argument(
+        "--remaining",
+        type=float,
+        default=DEFAULTS["remaining_g"],
+        help="grams left on spool (default 1000)",
+    )
     p.add_argument("--reserve", type=float, default=DEFAULTS["reserve_g"])
     p.add_argument("--pause-cmd", default=DEFAULTS["pause_command"])
     p.add_argument("--density", type=float, default=0)
     p.add_argument("--diameter", type=float, default=0)
     a = p.parse_args()
     try:
-        print("pause_at_weight: " + process_file(a.gcode, a.remaining, a.reserve, a.pause_cmd,
-                                                 a.density, a.diameter))
+        print(
+            "pause_at_weight: "
+            + process_file(a.gcode, a.remaining, a.reserve, a.pause_cmd, a.density, a.diameter)
+        )
     except (ValueError, OSError) as e:
         sys.exit("pause_at_weight: " + str(e))
 

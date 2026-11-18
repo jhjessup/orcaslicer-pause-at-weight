@@ -1,7 +1,8 @@
 """Tests for pause_at_weight.py. Run from the repository root:
 
-    python3 -m unittest discover -s tests
+python3 -m unittest discover -s tests
 """
+
 import importlib.util
 import json
 import os
@@ -21,6 +22,7 @@ def load_module(with_orca):
     if with_orca:
         sys.path.insert(0, HERE)
         import fake_orca
+
         sys.path.pop(0)
         fake_orca.registered.clear()
         sys.modules["orca"] = fake_orca
@@ -36,15 +38,23 @@ def make_gcode(layers=10, moves=10, e_per_move=100.0, absolute=False):
     out = ["; start\n", "G90\n", "M82\n" if absolute else "M83\n", "G92 E0\n"]
     e = 0.0
     for layer in range(layers):
-        out += [";LAYER_CHANGE\n", f";Z:{0.2 * (layer + 1):.1f}\n", f"G1 Z{0.2 * (layer + 1):.1f}\n"]
+        out += [
+            ";LAYER_CHANGE\n",
+            f";Z:{0.2 * (layer + 1):.1f}\n",
+            f"G1 Z{0.2 * (layer + 1):.1f}\n",
+        ]
         for m in range(moves):
             if absolute:
                 out += [f"G1 E{e - 0.8:.4f} ; retract\n", "G1 X10 Y10\n", f"G1 E{e:.4f}\n"]
                 e += e_per_move
                 out += [f"G1 X{m} Y5 E{e:.4f}\n"]
             else:
-                out += ["G1 E-0.8 ; retract\n", "G1 X10 Y10\n", "G1 E0.8\n",
-                        f"G1 X{m} Y5 E{e_per_move}\n"]
+                out += [
+                    "G1 E-0.8 ; retract\n",
+                    "G1 X10 Y10\n",
+                    "G1 E0.8\n",
+                    f"G1 X{m} Y5 E{e_per_move}\n",
+                ]
     out += ["; filament_diameter = 1.75,1.75\n", "; filament_density = 1.24,1.24\n"]
     return "".join(out)
 
@@ -110,12 +120,27 @@ class CoreTests(unittest.TestCase):
         self.write(make_gcode().replace("; filament_density = 1.24,1.24\n", ""))
         with self.assertRaises(ValueError):
             self.mod.process_file(self.path, 25, 5, "M600")
-        self.assertIn("pause inserted", self.mod.process_file(self.path, 25, 5, "M600", density=1.24))
+        self.assertIn(
+            "pause inserted", self.mod.process_file(self.path, 25, 5, "M600", density=1.24)
+        )
 
     def test_command_line_mode(self):
         self.write(make_gcode())
-        r = subprocess.run([sys.executable, SCRIPT, "--remaining", "25", "--reserve", "5",
-                            "--pause-cmd", "PAUSE", self.path], capture_output=True, text=True)
+        r = subprocess.run(
+            [
+                sys.executable,
+                SCRIPT,
+                "--remaining",
+                "25",
+                "--reserve",
+                "5",
+                "--pause-cmd",
+                "PAUSE",
+                self.path,
+            ],
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("\nPAUSE\n", self.read())
 
@@ -145,8 +170,10 @@ class PluginTests(unittest.TestCase):
             self.assertNotIn("M600", f.read())
 
     def test_post_process_inserts_pause(self):
-        r = self.run_step(self.orca.slicing.Step.psGCodePostProcess,
-                          {"remaining_g": 25, "reserve_g": 5, "pause_command": "PAUSE"})
+        r = self.run_step(
+            self.orca.slicing.Step.psGCodePostProcess,
+            {"remaining_g": 25, "reserve_g": 5, "pause_command": "PAUSE"},
+        )
         self.assertTrue(r.ok, r.message)
         with open(self.path) as f:
             self.assertIn("\nPAUSE\n", f.read())

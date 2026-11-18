@@ -83,6 +83,15 @@ Run the tests (no OrcaSlicer needed) from the repository root:
 python3 -m unittest discover -s tests
 ```
 
+Lint and format with [ruff](https://docs.astral.sh/ruff/) (settings in `pyproject.toml`):
+
+```bash
+ruff check . && ruff format --check .
+```
+
+GitHub Actions runs both on every pull request. A weekly workflow also checks that OrcaSlicer
+still has every plugin API name this plugin uses; if it fails, OrcaSlicer changed its API.
+
 ## License
 
 [MIT](LICENSE)

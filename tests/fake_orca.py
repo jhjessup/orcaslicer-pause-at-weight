@@ -3,6 +3,7 @@
 It mirrors only the parts of the API this plugin uses, as seen in OrcaSlicer's
 sandboxes/orca_gcode_stamp_plugin_any.py example. It is not the real API.
 """
+
 import enum
 import types
 

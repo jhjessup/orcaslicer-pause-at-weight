@@ -1,0 +1,10 @@
+# Tool configuration only. The plugin itself is the single file pause_at_weight.py.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W: style errors, F: real bugs (undefined names, unused imports),
+# I: import order, B: likely bugs, UP: modern Python syntax.
+select = ["E", "W", "F", "I", "B", "UP"]
