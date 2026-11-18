@@ -9,7 +9,6 @@ All notable changes to this project are documented here. The format follows
 ### Added
 - ruff lint and format checks, and a CI workflow running them plus the tests on Linux and
   Windows (Python 3.12 and 3.13).
-- Weekly check that OrcaSlicer's plugin API still has every name this plugin uses.
 
 ### Changed
 - Shorter plugin description; code reformatted with ruff (no behavior change).
