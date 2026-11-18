@@ -5,10 +5,9 @@ An OrcaSlicer plugin that inserts a filament-change pause before your spool runs
 Weigh your spool, enter how many grams are left, and the plugin adds a pause at the start of the
 layer where the print would use more than that (minus a safety margin). Swap spools, resume, done.
 
-> **Status: 0.2.0, early.** OrcaSlicer's plugin system is new and its API may change. The plugin
-> has been tested against a stand-in for OrcaSlicer's plugin API, not yet against a real
-> OrcaSlicer install. Please check the exported G-code before relying on it, and
-> [report problems](https://github.com/jhjessup/orcaslicer-pause-at-weight/issues).
+> **Status: 0.2.0, early.** Tested with OrcaSlicer 2.5 on Linux (Flatpak). OrcaSlicer's plugin
+> system is new and its API may change. Please check the exported G-code before relying on it,
+> and [report problems](https://github.com/jhjessup/orcaslicer-pause-at-weight/issues).
 
 ## Requirements
 
@@ -20,9 +19,16 @@ layer where the print would use more than that (minus a safety margin). Swap spo
 1. Download `pause_at_weight.py` from the [latest release](https://github.com/jhjessup/orcaslicer-pause-at-weight/releases/latest).
 2. Add it in OrcaSlicer's **Plugins** window, or copy it into the `orca_plugins` folder in
    OrcaSlicer's data folder (on Windows, `%APPDATA%\OrcaSlicer`).
-3. In **Process** settings (Advanced mode), pick **Pause at Weight** under
-   **Slicing Pipeline Plugin**.
-4. Set your spool weight with the **Capabilities** button (see Settings below).
+3. Restart OrcaSlicer so it loads the plugin.
+4. **Enable it:** in **Process** settings, switch on **Advanced** mode, open the **Others**
+   page, and select **Pause at Weight** under **Slicing Pipeline Plugin**. Then **save the
+   Process preset**. Installing alone does nothing: until it is selected here, the plugin
+   never runs.
+5. Set your spool weight with the **Capabilities** button (see Settings below).
+
+If you have more than one OrcaSlicer installed (for example a Flatpak and a regular install
+on Linux), each keeps its own plugins and presets. Install and enable the plugin in the one
+you actually use.
 
 ## Settings
 
@@ -46,8 +52,50 @@ Pause command by firmware:
 | Firmware | `pause_command` |
 |---|---|
 | Marlin | `M600` (filament change) |
+| Older Marlin without `M600`, e.g. stock Creality Ender 5 | see the sequence below |
 | Klipper | `PAUSE` |
 | Bambu Lab | `M400 U1` |
+
+### Older Marlin without `M600` (e.g. Creality Ender 5)
+
+Many older or stock Creality firmwares don't support `M600`. This sequence builds the pause
+from basic commands: it retracts, lifts, parks in a corner, waits for you to press the knob,
+purges the new filament, and lowers back to print height. The next layer's own G-code moves
+the head back over the print.
+
+```
+M84 S0            ; keep motors on while waiting (S0 matters: plain M84 turns them off)
+M83               ; relative extrusion
+G91
+G1 E-2 F1800      ; retract
+G1 Z10 F600       ; lift 10 mm
+G90
+G1 X0 Y0 F6000    ; park in the corner
+M0 Change filament
+G1 E25 F150       ; purge new filament (still parked; wipe the blob off)
+G1 E-1 F1800      ; small retract so it doesn't drip on the way back
+G91
+G1 Z-10 F600      ; back down to print height
+G90
+M84 S120          ; restore Marlin's default 2-minute motor timeout
+```
+
+As the plugin setting (one line in the JSON, with `\n` between commands):
+
+```json
+"pause_command": "M84 S0\nM83\nG91\nG1 E-2 F1800\nG1 Z10 F600\nG90\nG1 X0 Y0 F6000\nM0 Change filament\nG1 E25 F150\nG1 E-1 F1800\nG91\nG1 Z-10 F600\nG90\nM84 S120"
+```
+
+Before relying on it:
+
+- **`M0` must work on your printer.** Print a G-code file containing only `M0 test`: the
+  screen should show "test" and wait for a knob press. If not, try `M25` (SD card pause).
+- **Your G-code must use relative extrusion** (OrcaSlicer's default). `grep -m1 -E "^M8[23]"`
+  on the exported file should print `M83`.
+- **Printing from OctoPrint?** `M0` can conflict with how it sends commands; printing from
+  the SD card is the safe choice.
+- **Do a dry run:** set `remaining_g` so the pause happens a few layers in, then swap
+  filament and check that it purges and resumes cleanly.
 
 **Remember to update `remaining_g` for a partly used spool.** With the default, the plugin
 assumes a full 1 kg spool.
