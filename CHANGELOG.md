@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-18
+
 ### Added
 - The plugin now always writes a summary comment as the second line of the G-code, even
   when no pause is needed, so you can see it ran.

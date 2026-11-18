@@ -5,7 +5,7 @@ An OrcaSlicer plugin that inserts a filament-change pause before your spool runs
 Weigh your spool, enter how many grams are left, and the plugin adds a pause at the start of the
 layer where the print would use more than that (minus a safety margin). Swap spools, resume, done.
 
-> **Status: 0.1.0, early.** OrcaSlicer's plugin system is new and its API may change. The plugin
+> **Status: 0.2.0, early.** OrcaSlicer's plugin system is new and its API may change. The plugin
 > has been tested against a stand-in for OrcaSlicer's plugin API, not yet against a real
 > OrcaSlicer install. Please check the exported G-code before relying on it, and
 > [report problems](https://github.com/jhjessup/orcaslicer-pause-at-weight/issues).
