@@ -5,10 +5,9 @@ An OrcaSlicer plugin that inserts a filament-change pause before your spool runs
 Weigh your spool, enter how many grams are left, and the plugin adds a pause at the start of the
 layer where the print would use more than that (minus a safety margin). Swap spools, resume, done.
 
-> **Status: 0.2.0, early.** OrcaSlicer's plugin system is new and its API may change. The plugin
-> has been tested against a stand-in for OrcaSlicer's plugin API, not yet against a real
-> OrcaSlicer install. Please check the exported G-code before relying on it, and
-> [report problems](https://github.com/jhjessup/orcaslicer-pause-at-weight/issues).
+> **Status: 0.2.0, early.** Tested with OrcaSlicer 2.5 on Linux (Flatpak). OrcaSlicer's plugin
+> system is new and its API may change. Please check the exported G-code before relying on it,
+> and [report problems](https://github.com/jhjessup/orcaslicer-pause-at-weight/issues).
 
 ## Requirements
 
@@ -20,9 +19,16 @@ layer where the print would use more than that (minus a safety margin). Swap spo
 1. Download `pause_at_weight.py` from the [latest release](https://github.com/jhjessup/orcaslicer-pause-at-weight/releases/latest).
 2. Add it in OrcaSlicer's **Plugins** window, or copy it into the `orca_plugins` folder in
    OrcaSlicer's data folder (on Windows, `%APPDATA%\OrcaSlicer`).
-3. In **Process** settings (Advanced mode), pick **Pause at Weight** under
-   **Slicing Pipeline Plugin**.
-4. Set your spool weight with the **Capabilities** button (see Settings below).
+3. Restart OrcaSlicer so it loads the plugin.
+4. **Enable it:** in **Process** settings, switch on **Advanced** mode, open the **Others**
+   page, and select **Pause at Weight** under **Slicing Pipeline Plugin**. Then **save the
+   Process preset**. Installing alone does nothing: until it is selected here, the plugin
+   never runs.
+5. Set your spool weight with the **Capabilities** button (see Settings below).
+
+If you have more than one OrcaSlicer installed (for example a Flatpak and a regular install
+on Linux), each keeps its own plugins and presets. Install and enable the plugin in the one
+you actually use.
 
 ## Settings
 
