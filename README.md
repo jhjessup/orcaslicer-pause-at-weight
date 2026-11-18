@@ -66,8 +66,15 @@ OrcaSlicer adds the G-code file path automatically. Options: `--remaining`, `--r
 ## Checking the result
 
 The G-code preview does **not** show the pause; it is added to the exported file only. Open the
-exported G-code and search for `pause_at_weight` to see where it was inserted and how many grams
-were used before it.
+exported G-code and search for `pause_at_weight`.
+
+- The second line of the file is always a summary, so you can tell the plugin ran, for example
+  `; pause_at_weight: print needs 738.2 g, spool has 1000.0 g (reserve 20 g); no pause needed.`
+- If a pause was inserted, a second match marks where, with the grams used before it. The
+  `;Z:` line just below it is the height where the printer will pause.
+- No match at all means the plugin did not run: check that it is selected under
+  **Slicing Pipeline Plugin**. (Bambu `.gcode.3mf` files are zip archives; search the
+  `.gcode` file inside.)
 
 ## Limitations
 
