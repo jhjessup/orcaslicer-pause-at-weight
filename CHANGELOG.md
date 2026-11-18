@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-18
+
+### Added
+- The summary line now says roughly how long after the start the pause comes (for example
+  "about 6h 40m into the print"), using OrcaSlicer's `M73` time estimate.
+
 ## [0.2.0] - 2026-11-18
 
 ### Added
