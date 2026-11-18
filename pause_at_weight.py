@@ -5,7 +5,7 @@
 # name = "Pause at Weight"
 # description = "Pauses for a filament change before the spool runs out, based on its weight."
 # author = "jhjessup"
-# version = "0.1.0"
+# version = "0.2.0"
 # type = "slicing-pipeline"
 # ///
 """Pause at Weight - an OrcaSlicer 2.5+ slicing-pipeline plugin.
