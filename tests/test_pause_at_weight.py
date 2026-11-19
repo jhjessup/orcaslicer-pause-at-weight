@@ -33,8 +33,12 @@ def load_module(with_orca):
     return module
 
 
-def make_gcode(layers=10, moves=10, e_per_move=100.0, absolute=False):
-    """Synthetic G-code. 1.75 mm PLA is ~2.98 g/m, so the defaults use ~29.8 g."""
+def make_gcode(layers=10, moves=10, e_per_move=100.0, absolute=False, minutes_per_layer=0):
+    """Synthetic G-code. 1.75 mm PLA is ~2.98 g/m, so the defaults use ~29.8 g.
+
+    With minutes_per_layer, each layer starts with an 'M73 P<percent> R<minutes left>' line,
+    like OrcaSlicer's progress lines.
+    """
     out = ["; start\n", "G90\n", "M82\n" if absolute else "M83\n", "G92 E0\n"]
     e = 0.0
     for layer in range(layers):
@@ -43,6 +47,9 @@ def make_gcode(layers=10, moves=10, e_per_move=100.0, absolute=False):
             f";Z:{0.2 * (layer + 1):.1f}\n",
             f"G1 Z{0.2 * (layer + 1):.1f}\n",
         ]
+        if minutes_per_layer:
+            left = (layers - layer) * minutes_per_layer
+            out += [f"M73 P{100 * layer // layers} R{left}\n"]
         for m in range(moves):
             if absolute:
                 out += [f"G1 E{e - 0.8:.4f} ; retract\n", "G1 X10 Y10\n", f"G1 E{e:.4f}\n"]
@@ -85,6 +92,18 @@ class CoreTests(unittest.TestCase):
         # Limit is 20 g; each layer is ~2.98 g, so the pause goes before layer 7.
         self.assertEqual(lines[i + 2], ";LAYER_CHANGE")
         self.assertEqual(lines[i + 3], ";Z:1.4")
+
+    def test_time_to_pause_from_m73_progress_lines(self):
+        # 10 layers x 50 min; the pause goes before layer 7, after 6 layers = 300 min.
+        self.write(make_gcode(minutes_per_layer=50))
+        msg = self.mod.process_file(self.path, 25, 5, "M600")
+        self.assertIn("about 5h 0m into the print", msg)
+
+    def test_time_under_an_hour_and_missing_m73(self):
+        self.write(make_gcode(minutes_per_layer=5))
+        self.assertIn("about 30m into the print", self.mod.process_file(self.path, 25, 5, "M600"))
+        self.write(make_gcode())
+        self.assertNotIn("into the print", self.mod.process_file(self.path, 25, 5, "M600"))
 
     def test_absolute_extrusion_gives_same_result(self):
         self.write(make_gcode(absolute=True))

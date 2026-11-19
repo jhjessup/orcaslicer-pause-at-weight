@@ -5,7 +5,7 @@
 # name = "Pause at Weight"
 # description = "Pauses for a filament change before the spool runs out, based on its weight."
 # author = "jhjessup"
-# version = "0.2.0"
+# version = "0.3.0"
 # type = "slicing-pipeline"
 # ///
 """Pause at Weight - an OrcaSlicer 2.5+ slicing-pipeline plugin.
@@ -97,6 +97,34 @@ def _cumulative_extrusion(lines):
     return totals, extra_tools
 
 
+def _m73_remaining(line):
+    """Minutes left from an 'M73 ... R<minutes>' progress line, or None."""
+    code = line.split(";", 1)[0].strip().upper()
+    if not code or code.split()[0] != "M73":
+        return None
+    words = dict(_WORD_RE.findall(code[3:]))
+    return float(words["R"]) if "R" in words else None
+
+
+def _minutes_until(lines, index):
+    """Slicer-estimated minutes from print start to lines[index], from its M73 R lines.
+
+    Returns None if the G-code has no M73 R lines (e.g. "Disable set remaining print time").
+    """
+    remaining = [(i, r) for i, line in enumerate(lines) if (r := _m73_remaining(line)) is not None]
+    if not remaining:
+        return None
+    # Each M73 R says how much time is left from that line on, so the first one at or after
+    # `index` gives the time left at that point. Past the last one, use the last one.
+    at = next((r for i, r in remaining if i >= index), remaining[-1][1])
+    return remaining[0][1] - at
+
+
+def _format_minutes(minutes):
+    hours, mins = divmod(round(minutes), 60)
+    return f"{hours}h {mins}m" if hours else f"{mins}m"
+
+
 def process_file(path, remaining_g, reserve_g, pause_command, density=0, diameter=0):
     """Insert the pause into the G-code file in place. Returns a message; raises ValueError."""
     if remaining_g <= 0:
@@ -130,13 +158,15 @@ def process_file(path, remaining_g, reserve_g, pause_command, density=0, diamete
         # Pause at the start of the layer where the limit is crossed.
         insert_at = next((i for i in range(hit, -1, -1) if lines[i].startswith(_LAYER_MARKER)), hit)
         used_g = (totals[insert_at - 1] if insert_at > 0 else 0.0) * grams_per_mm
+        minutes = _minutes_until(lines, insert_at)
+        when = "" if minutes is None else f", about {_format_minutes(minutes)} into the print"
         commands = [c.strip() for c in pause_command.replace("\\n", "\n").split("\n") if c.strip()]
         block = [f"; --- pause_at_weight: ~{used_g:.1f} g used of {remaining_g:.1f} g ---{eol}"]
         block += [c + eol for c in commands]
         block.append(f"; --- end pause_at_weight ---{eol}")
         lines[insert_at:insert_at] = block
         message = (
-            f"pause inserted after ~{used_g:.1f} g (print total {total_g:.1f} g); "
+            f"pause inserted after ~{used_g:.1f} g{when} (print total {total_g:.1f} g); "
             f"new spool needs at least {total_g - used_g:.1f} g.{note}"
         )
 
